@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\BarangController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\OrderController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -21,4 +22,6 @@ Route::get('/hello', function () {
 // API POS Routes
 Route::apiResource('barangs', BarangController::class);
 Route::get('barangs/scan/{sku}', [BarangController::class, 'scan']);
-Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
+Route::apiResource('categories', CategoryController::class);
+Route::apiResource('orders', OrderController::class)->only(['index', 'store', 'show']);
+Route::get('invoice/{nomor_invoice}', [OrderController::class, 'invoice']);

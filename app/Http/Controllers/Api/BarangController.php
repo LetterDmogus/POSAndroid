@@ -10,11 +10,29 @@ use Illuminate\Support\Facades\Validator;
 
 class BarangController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $barangs = Barang::with('category')->latest()->get();
+        $query = Barang::with('category')->latest();
+
+        // Fitur Search (berdasarkan Nama atau SKU)
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('nama_barang', 'like', "%{$search}%")
+                  ->orWhere('sku', 'like', "%{$search}%");
+            });
+        }
+
+        // Fitur Filter by Kategori
+        if ($request->has('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        $barangs = $query->get();
+
         return response()->json([
             'success' => true,
+            'count' => $barangs->count(),
             'data' => $barangs
         ]);
     }
