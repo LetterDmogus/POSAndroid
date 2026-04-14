@@ -13,10 +13,28 @@ use Illuminate\Support\Facades\Validator;
 
 class OrderController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $orders = Order::with('details')->latest()->get();
-        return response()->json(['success' => true, 'data' => $orders]);
+        $query = Order::with('details')->latest();
+
+        // Filter Berdasarkan Tanggal (Laporan)
+        if ($request->has('start_date') && $request->has('end_date')) {
+            $query->whereBetween('created_at', [
+                $request->start_date . ' 00:00:00', 
+                $request->end_date . ' 23:59:59'
+            ]);
+        }
+
+        $orders = $query->get();
+        $total_omzet = $orders->sum('total_harga');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Laporan Penjualan Berhasil Diambil',
+            'total_omzet' => (int) $total_omzet,
+            'count' => $orders->count(),
+            'data' => $orders
+        ]);
     }
 
     public function store(Request $request)
