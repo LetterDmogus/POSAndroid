@@ -27,6 +27,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
 
     // API POS Routes
+    Route::get('dashboard', [\App\Http\Controllers\Api\DashboardController::class, 'index']);
     Route::apiResource('barangs', BarangController::class);
     Route::get('barangs/scan/{sku}', [BarangController::class, 'scan']);
     Route::apiResource('categories', CategoryController::class);
