@@ -24,10 +24,19 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        // Debug 1: Cek apakah user ada
+        if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'Kredensial tidak valid'
+                'message' => 'Email tidak terdaftar di database'
+            ], 401);
+        }
+
+        // Debug 2: Cek apakah password cocok
+        if (!Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Password salah!'
             ], 401);
         }
 
