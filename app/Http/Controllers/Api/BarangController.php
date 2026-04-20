@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-
 use App\Models\Barang;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 
 class BarangController extends Controller
 {
@@ -14,7 +14,6 @@ class BarangController extends Controller
     {
         $query = Barang::with('category')->latest();
 
-        // Fitur Search (berdasarkan Nama atau SKU)
         if ($request->has('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -23,7 +22,6 @@ class BarangController extends Controller
             });
         }
 
-        // Fitur Filter by Kategori
         if ($request->has('category_id')) {
             $query->where('category_id', $request->category_id);
         }
@@ -46,41 +44,41 @@ class BarangController extends Controller
             'harga_jual' => 'required|numeric',
             'category_id' => 'required|exists:categories,id',
             'stok' => 'required|integer',
+            'satuan' => 'required',
+            'foto' => 'nullable|image|max:2048'
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-        $barang = Barang::create($request->all());
+        $data = $request->all();
+
+        if ($request->hasFile('foto')) {
+            $path = $request->file('foto')->store('produk', 'public');
+            $data['foto'] = $path;
+        }
+
+        $barang = Barang::create($data);
 
         return response()->json([
             'success' => true,
             'message' => 'Barang berhasil ditambahkan',
-            'data' => $barang
+            'data' => $barang->load('category')
         ], 201);
     }
 
     public function show(string $id)
     {
         $barang = Barang::with('category')->find($id);
-
-        if (!$barang) {
-            return response()->json(['message' => 'Barang tidak ditemukan'], 404);
-        }
-
+        if (!$barang) return response()->json(['message' => 'Barang tidak ditemukan'], 404);
         return response()->json(['success' => true, 'data' => $barang]);
     }
 
-    // Custom method for QR Scan by SKU
     public function scan(string $sku)
     {
         $barang = Barang::with('category')->where('sku', $sku)->first();
-
-        if (!$barang) {
-            return response()->json(['message' => 'Barang dengan SKU ini tidak ditemukan'], 404);
-        }
-
+        if (!$barang) return response()->json(['message' => 'Barang tidak ditemukan'], 404);
         return response()->json(['success' => true, 'data' => $barang]);
     }
 
@@ -89,12 +87,34 @@ class BarangController extends Controller
         $barang = Barang::find($id);
         if (!$barang) return response()->json(['message' => 'Barang tidak ditemukan'], 404);
 
-        $barang->update($request->all());
+        $validator = Validator::make($request->all(), [
+            'sku' => 'required|unique:barangs,sku,' . $id,
+            'nama_barang' => 'required',
+            'harga_beli' => 'required|numeric',
+            'harga_jual' => 'required|numeric',
+            'category_id' => 'required|exists:categories,id',
+            'stok' => 'required|integer',
+            'satuan' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $data = $request->all();
+
+        if ($request->hasFile('foto')) {
+            if ($barang->foto) Storage::disk('public')->delete($barang->foto);
+            $path = $request->file('foto')->store('produk', 'public');
+            $data['foto'] = $path;
+        }
+
+        $barang->update($data);
 
         return response()->json([
             'success' => true,
             'message' => 'Barang berhasil diperbarui',
-            'data' => $barang
+            'data' => $barang->load('category')
         ]);
     }
 
@@ -103,11 +123,9 @@ class BarangController extends Controller
         $barang = Barang::find($id);
         if (!$barang) return response()->json(['message' => 'Barang tidak ditemukan'], 404);
 
+        if ($barang->foto) Storage::disk('public')->delete($barang->foto);
         $barang->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Barang berhasil dihapus'
-        ]);
+        return response()->json(['success' => true, 'message' => 'Barang dihapus']);
     }
 }
